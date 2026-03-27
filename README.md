@@ -1,59 +1,180 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🔐 PHP Laravel 12 - Two Step Verification (2FA)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project demonstrates an **advanced Two-Step Verification (2FA) system** built using **Laravel 12** and **Laravel Breeze**.
 
-## About Laravel
+When a user logs in, a **6-digit OTP (One Time Password)** is sent to their email address. The user must verify the OTP before accessing the dashboard.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+This ensures an **extra layer of security** beyond the normal email and password login.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+# 🚀 Features
 
-## Learning Laravel
+* **Laravel 12 Framework** – Latest performance and security improvements
+* **Laravel Breeze Authentication** – Simple login and registration system
+* **Two-Step Verification (2FA)** – Email-based OTP verification
+* **Custom Middleware Protection** – Prevents dashboard access without OTP verification
+* **OTP Expiration Logic** – OTP is valid for **10 minutes only**
+* **Resend OTP Functionality** – Users can request a new OTP if needed
+* **Modern UI** – Clean verification interface built with **Tailwind CSS**
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+# 🛠️ Installation Guide
 
-## Laravel Sponsors
+## 1️⃣ Clone Project & Install Dependencies
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+composer create-project laravel/laravel PHP_Laravel12_Two_Step_Varification
 
-### Premium Partners
+cd PHP_Laravel12_Two_Step_Varification
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+composer install
+npm install
+```
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# 2️⃣ Environment Setup
 
-## Code of Conduct
+Create your `.env` file and generate the application key.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Security Vulnerabilities
+Update database credentials in `.env`.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```env
+DB_DATABASE=your_database
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 3️⃣ Install Laravel Breeze
+
+Laravel Breeze is used for authentication (Login / Register).
+
+```bash
+composer require laravel/breeze --dev
+php artisan breeze:install
+
+npm install
+npm run dev
+```
+
+---
+
+# 4️⃣ Run Database Migration
+
+Run migrations to create the necessary tables including OTP fields.
+
+```bash
+php artisan migrate
+```
+
+---
+
+# 5️⃣ Email Configuration
+
+Configure your mail service in `.env` to send OTP emails.
+
+Example using **Mailtrap**:
+
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=your_username
+MAIL_PASSWORD=your_password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS="manavsanchela76@gmail.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+---
+
+# 📖 How Two-Step Verification Works
+
+### 1️⃣ User Login
+
+The user logs in using their **email and password**.
+
+### 2️⃣ OTP Generation
+
+After successful login, the system generates a **6-digit OTP** and stores it in the database.
+
+### 3️⃣ Email Notification
+
+Laravel **Notification system** sends the OTP to the user's email.
+
+### 4️⃣ Middleware Protection
+
+A custom middleware ensures the user **cannot access the dashboard without verifying the OTP**.
+
+### 5️⃣ OTP Verification
+
+The user enters the OTP on the verification page.
+
+If the OTP is correct:
+
+* OTP will be cleared from the database
+* The user is redirected to the **dashboard**
+
+---
+
+# 📂 Project Structure (Important Files)
+
+| File Path                                      | Description                               |
+| ---------------------------------------------- | ----------------------------------------- |
+| `app/Models/User.php`                          | Contains OTP generation and reset methods |
+| `app/Http/Middleware/TwoFactorVerify.php`      | Protects dashboard routes                 |
+| `app/Http/Controllers/TwoFactorController.php` | Handles OTP verification and resend       |
+| `app/Notifications/SendTwoFactorCode.php`      | Sends OTP email notification              |
+| `resources/views/auth/verify.blade.php`        | Tailwind UI for OTP verification          |
+
+---
+
+# ⚡ Clear Cache Commands
+
+If you encounter any issues after making changes, run:
+
+```bash
+php artisan optimize:clear
+```
+
+---
+
+# ▶️ Run the Project
+
+Start the development server:
+
+```bash
+php artisan serve
+```
+
+Open your browser and visit:
+
+```
+http://localhost:8000
+```
+
+---
+#Output
+<img width="852" height="492" alt="image" src="https://github.com/user-attachments/assets/64169743-c1c5-4074-898d-96cd7013189c" />
+<img width="496" height="413" alt="image" src="https://github.com/user-attachments/assets/a0d279ef-59a7-4c61-bdd8-7603d4ed6ab3" />
+<img width="423" height="530" alt="image" src="https://github.com/user-attachments/assets/24bb2a34-2c6e-4963-86dd-eba26822dfe7" />
+<img width="1042" height="240" alt="image" src="https://github.com/user-attachments/assets/ee6d2eff-c3af-4284-ac0b-868073669a0b" />
+
+
+
+
+# 👨‍💻 Developed By
+
+**Manav Sanchela**
+
+---
+
