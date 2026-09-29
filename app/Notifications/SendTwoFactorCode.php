@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -11,42 +10,31 @@ class SendTwoFactorCode extends Notification
 {
     use Queueable;
 
-    /**
-     * Create a new notification instance.
-     */
     public function __construct()
     {
-        //
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
     public function via(object $notifiable): array
     {
         return ['mail'];
     }
 
-    /**
-     * Get the mail representation of the notification.
-     */
-    public function toMail($notifiable): MailMessage {
-    return (new MailMessage)
-        ->line("Tamaro login OTP code niche mujab che: {$notifiable->two_factor_code}")
-        ->line("Aa code 10 minute mate valid che.");
-}
+    public function toMail($notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject('Your Two-Factor Authentication Code')
+            ->greeting('Hello ' . $notifiable->name . '!')
+            ->line('Your two-factor authentication verification code is:')
+            ->line($notifiable->two_factor_code)
+            ->line('This OTP is valid for 10 minutes.')
+            ->line('If you did not attempt to login, please secure your account immediately.')
+            ->salutation('Regards, ' . config('app.name'));
+    }
 
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(object $notifiable): array
     {
         return [
-            //
+            'event' => 'two_factor_otp',
         ];
     }
 }
