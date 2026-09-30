@@ -23,10 +23,16 @@ class SecuritySettingsController extends Controller
             ->latest()
             ->first();
 
+        $failedAttempts = $user->securityActivities()
+            ->where('event', 'OTP Failed')
+            ->count();
+
         return view('security.settings', [
             'user' => $user,
             'lastVerification' => $lastVerification,
             'lastOtp' => $lastOtp,
+            'failedAttempts' => $failedAttempts,
+            'resendCooldown' => $user->resendCooldownSeconds(),
         ]);
     }
 
@@ -38,6 +44,9 @@ class SecuritySettingsController extends Controller
         $user = auth()->user();
 
         $user->two_factor_enabled = true;
+        $user->two_factor_failed_attempts = 0;
+        $user->two_factor_locked_until = null;
+
         $user->save();
 
         $user->recordSecurityActivity(
@@ -66,7 +75,11 @@ class SecuritySettingsController extends Controller
         $user = auth()->user();
 
         $user->two_factor_enabled = false;
+        $user->two_factor_failed_attempts = 0;
+        $user->two_factor_locked_until = null;
+
         $user->resetTwoFactorCode();
+
         $user->save();
 
         $user->recordSecurityActivity(

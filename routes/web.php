@@ -86,6 +86,11 @@ Route::middleware('auth')->group(function () {
         'dashboard'
     ])->name('security.dashboard');
 
+    Route::get('/security/export', [
+        SecurityActivityController::class,
+        'export'
+    ])->name('security.export');
+
 
     /*
     |--------------------------------------------------------------------------

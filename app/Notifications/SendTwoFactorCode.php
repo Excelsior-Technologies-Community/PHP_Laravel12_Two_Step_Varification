@@ -27,6 +27,8 @@ class SendTwoFactorCode extends Notification
             ->line('Your two-factor authentication verification code is:')
             ->line($notifiable->two_factor_code)
             ->line('This OTP is valid for 10 minutes.')
+            ->line('You have a maximum of 5 verification attempts.')
+            ->line('Repeated failed attempts will temporarily lock verification.')
             ->line('If you did not attempt to login, please secure your account immediately.')
             ->salutation('Regards, ' . config('app.name'));
     }

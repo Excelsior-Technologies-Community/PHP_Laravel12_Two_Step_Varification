@@ -18,26 +18,40 @@ class TwoFactorVerify
 
         $user = auth()->user();
 
-        /*
-         * If 2FA is disabled, allow access.
-         */
         if (!$user->two_factor_enabled) {
             return $next($request);
         }
 
-        /*
-         * No OTP means the user has already completed
-         * verification.
+        /**
+         * Check lock.
+         */
+        if ($user->isTwoFactorLocked()) {
+            $user->resetTwoFactorCode();
+
+            auth()->logout();
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'otp' =>
+                        'Two-factor verification is temporarily locked because of too many failed attempts.',
+                ]);
+        }
+
+        /**
+         * No OTP means verification is complete.
          */
         if (!$user->two_factor_code) {
             return $next($request);
         }
 
-        /*
-         * Check OTP expiration.
+        /**
+         * Check expiration.
          */
         if ($user->isTwoFactorCodeExpired()) {
-
             $user->recordSecurityActivity(
                 'OTP Expired',
                 'The OTP expired before verification was completed.'
@@ -53,12 +67,13 @@ class TwoFactorVerify
             return redirect()
                 ->route('login')
                 ->withErrors([
-                    'otp' => 'Your OTP has expired. Please login again.',
+                    'otp' =>
+                        'Your OTP has expired. Please login again.',
                 ]);
         }
 
-        /*
-         * Prevent dashboard access until OTP is verified.
+        /**
+         * Force verification.
          */
         if (!$request->is('verify*')) {
             return redirect()->route('verify.index');

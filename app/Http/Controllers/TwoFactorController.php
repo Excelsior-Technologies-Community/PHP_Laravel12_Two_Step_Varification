@@ -18,8 +18,17 @@ class TwoFactorController extends Controller
             return redirect()->route('dashboard');
         }
 
+        if ($user->isTwoFactorLocked()) {
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'otp' => 'Too many failed OTP attempts. Please try again after 15 minutes.',
+                ]);
+        }
+
         return view('auth.verify', [
             'user' => $user,
+            'resendCooldown' => $user->resendCooldownSeconds(),
         ]);
     }
 
@@ -41,11 +50,21 @@ class TwoFactorController extends Controller
             return redirect()->route('dashboard');
         }
 
-        /*
-         * Check OTP expiration first.
+        /**
+         * Check lock.
+         */
+        if ($user->isTwoFactorLocked()) {
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'otp' => 'Too many failed attempts. Please try again after the lock period.',
+                ]);
+        }
+
+        /**
+         * Check expiration.
          */
         if ($user->isTwoFactorCodeExpired()) {
-
             $user->recordSecurityActivity(
                 'OTP Expired',
                 'The user attempted to verify an expired OTP.'
@@ -60,24 +79,44 @@ class TwoFactorController extends Controller
                 ]);
         }
 
-        /*
-         * Check OTP value.
+        /**
+         * Check OTP.
          */
-        if ($request->input('two_factor_code') !== (string) $user->two_factor_code) {
+        if (
+            $request->input('two_factor_code')
+            !== (string) $user->two_factor_code
+        ) {
+            $user->registerFailedTwoFactorAttempt();
 
-            $user->recordSecurityActivity(
-                'OTP Failed',
-                'An incorrect OTP was entered.'
+            if ($user->isTwoFactorLocked()) {
+                $user->resetTwoFactorCode();
+
+                auth()->logout();
+
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()
+                    ->route('login')
+                    ->withErrors([
+                        'otp' => 'Too many failed OTP attempts. Your verification has been locked for 15 minutes.',
+                    ]);
+            }
+
+            $remaining = max(
+                0,
+                5 - $user->two_factor_failed_attempts
             );
 
             return back()
                 ->withErrors([
-                    'two_factor_code' => 'The OTP you entered is incorrect.',
+                    'two_factor_code' =>
+                        "The OTP is incorrect. {$remaining} attempt(s) remaining.",
                 ])
                 ->withInput();
         }
 
-        /*
+        /**
          * Successful verification.
          */
         $user->recordSecurityActivity(
@@ -86,10 +125,14 @@ class TwoFactorController extends Controller
         );
 
         $user->resetTwoFactorCode();
+        $user->clearTwoFactorAttempts();
 
         return redirect()
             ->route('dashboard')
-            ->with('success', 'Two-factor verification completed successfully.');
+            ->with(
+                'success',
+                'Two-factor verification completed successfully.'
+            );
     }
 
     /**
@@ -101,6 +144,31 @@ class TwoFactorController extends Controller
 
         if (!$user->two_factor_enabled) {
             return redirect()->route('dashboard');
+        }
+
+        /**
+         * Check lock.
+         */
+        if ($user->isTwoFactorLocked()) {
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'otp' => 'OTP verification is temporarily locked.',
+                ]);
+        }
+
+        /**
+         * Check resend cooldown.
+         */
+        if (!$user->canResendTwoFactorCode()) {
+            $seconds = $user->resendCooldownSeconds();
+
+            return redirect()
+                ->route('verify.index')
+                ->withErrors([
+                    'otp' =>
+                        "Please wait {$seconds} seconds before requesting another OTP.",
+                ]);
         }
 
         $user->generateTwoFactorCode();

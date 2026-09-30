@@ -32,11 +32,13 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_enabled' => 'boolean',
             'two_factor_expires_at' => 'datetime',
+            'two_factor_locked_until' => 'datetime',
+            'two_factor_last_sent_at' => 'datetime',
         ];
     }
 
     /**
-     * Security activity relationship.
+     * Security activities.
      */
     public function securityActivities(): HasMany
     {
@@ -58,6 +60,8 @@ class User extends Authenticatable
 
         $this->two_factor_expires_at = now()->addMinutes(10);
 
+        $this->two_factor_last_sent_at = now();
+
         $this->save();
 
         $this->timestamps = true;
@@ -71,7 +75,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Reset the current OTP.
+     * Reset current OTP.
      */
     public function resetTwoFactorCode(): void
     {
@@ -86,7 +90,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Check whether the current OTP is expired.
+     * Check OTP expiration.
      */
     public function isTwoFactorCodeExpired(): bool
     {
@@ -95,7 +99,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Check whether an OTP is currently active.
+     * Check active OTP.
      */
     public function hasActiveTwoFactorCode(): bool
     {
@@ -106,7 +110,104 @@ class User extends Authenticatable
     }
 
     /**
-     * Record a security activity.
+     * Check whether 2FA is currently locked.
+     */
+    public function isTwoFactorLocked(): bool
+    {
+        if (!$this->two_factor_locked_until) {
+            return false;
+        }
+
+        if ($this->two_factor_locked_until->isPast()) {
+            $this->clearTwoFactorLock();
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Register failed OTP attempt.
+     */
+    public function registerFailedTwoFactorAttempt(): void
+    {
+        $this->two_factor_failed_attempts++;
+
+        if ($this->two_factor_failed_attempts >= 5) {
+            $this->two_factor_locked_until = now()->addMinutes(15);
+
+            $this->securityActivities()->create([
+                'event' => 'OTP Locked',
+                'description' => 'OTP verification was locked for 15 minutes after 5 failed attempts.',
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+        }
+
+        $this->save();
+
+        $this->securityActivities()->create([
+            'event' => 'OTP Failed',
+            'description' => 'An incorrect OTP was entered. Failed attempts: '
+                . $this->two_factor_failed_attempts
+                . '/5.',
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+    }
+
+    /**
+     * Clear OTP lock.
+     */
+    public function clearTwoFactorLock(): void
+    {
+        $this->two_factor_failed_attempts = 0;
+        $this->two_factor_locked_until = null;
+
+        $this->save();
+    }
+
+    /**
+     * Clear attempts after successful verification.
+     */
+    public function clearTwoFactorAttempts(): void
+    {
+        $this->two_factor_failed_attempts = 0;
+        $this->two_factor_locked_until = null;
+
+        $this->save();
+    }
+
+    /**
+     * Remaining OTP resend cooldown in seconds.
+     */
+    public function resendCooldownSeconds(): int
+    {
+        if (!$this->two_factor_last_sent_at) {
+            return 0;
+        }
+
+        $availableAt = $this->two_factor_last_sent_at
+            ->copy()
+            ->addSeconds(60);
+
+        return max(
+            0,
+            now()->diffInSeconds($availableAt, false)
+        );
+    }
+
+    /**
+     * Check whether resend is allowed.
+     */
+    public function canResendTwoFactorCode(): bool
+    {
+        return $this->resendCooldownSeconds() <= 0;
+    }
+
+    /**
+     * Record security activity.
      */
     public function recordSecurityActivity(
         string $event,
